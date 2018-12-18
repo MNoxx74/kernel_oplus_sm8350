@@ -96,6 +96,10 @@ static inline bool pv_hybrid_queued_unfair_trylock(struct qspinlock *lock)
 			break;
 
 		cpu_relax();
+	if (!(atomic_read(&lock->val) & _Q_LOCKED_PENDING_MASK) &&
+	    (cmpxchg(&lock->locked, 0, _Q_LOCKED_VAL) == 0)) {
+		qstat_inc(qstat_pv_lock_stealing, true);
+		return true;
 	}
 
 	return false;
@@ -111,6 +115,11 @@ static __always_inline void set_pending(struct qspinlock *lock)
 	WRITE_ONCE(lock->pending, 1);
 }
 
+static __always_inline void clear_pending(struct qspinlock *lock)
+{
+	WRITE_ONCE(lock->pending, 0);
+}
+
 /*
  * The pending bit check in pv_queued_spin_steal_lock() isn't a memory
  * barrier. Therefore, an atomic cmpxchg_acquire() is used to acquire the
@@ -119,8 +128,8 @@ static __always_inline void set_pending(struct qspinlock *lock)
 static __always_inline int trylock_clear_pending(struct qspinlock *lock)
 {
 	return !READ_ONCE(lock->locked) &&
-	       (cmpxchg_acquire(&lock->locked_pending, _Q_PENDING_VAL,
-				_Q_LOCKED_VAL) == _Q_PENDING_VAL);
+	       (cmpxchg(&lock->locked_pending, _Q_PENDING_VAL, _Q_LOCKED_VAL)
+			== _Q_PENDING_VAL);
 }
 #else /* _Q_PENDING_BITS == 8 */
 static __always_inline void set_pending(struct qspinlock *lock)
@@ -465,8 +474,8 @@ pv_wait_head_or_lock(struct qspinlock *lock, struct mcs_spinlock *node)
 			}
 		}
 		WRITE_ONCE(pn->state, vcpu_hashed);
-		lockevent_inc(pv_wait_head);
-		lockevent_cond_inc(pv_wait_again, waitcnt);
+		qstat_inc(qstat_pv_wait_head, true);
+		qstat_inc(qstat_pv_wait_again, waitcnt);
 		pv_wait(&lock->locked, _Q_SLOW_VAL);
 
 		/*

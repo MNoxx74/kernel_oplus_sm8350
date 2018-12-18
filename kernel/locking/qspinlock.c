@@ -178,7 +178,7 @@ static __always_inline u32 xchg_tail(struct qspinlock *lock, u32 tail)
 	 * We can use relaxed semantics since the caller ensures that the
 	 * MCS node is properly initialized before updating the tail.
 	 */
-	return (u32)xchg_relaxed(&lock->tail,
+	return (u32)xchg_release(&lock->tail,
 				 tail >> _Q_TAIL_OFFSET) << _Q_TAIL_OFFSET;
 }
 
