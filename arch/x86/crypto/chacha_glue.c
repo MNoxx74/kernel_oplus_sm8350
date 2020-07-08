@@ -14,8 +14,6 @@
 #include <linux/module.h>
 #include <asm/simd.h>
 
-#define CHACHA_STATE_ALIGN 16
-
 asmlinkage void chacha_block_xor_ssse3(u32 *state, u8 *dst, const u8 *src,
 				       unsigned int len, int nrounds);
 asmlinkage void chacha_4block_xor_ssse3(u32 *state, u8 *dst, const u8 *src,
@@ -126,8 +124,6 @@ static void chacha_dosimd(u32 *state, u8 *dst, const u8 *src,
 static int chacha_simd_stream_xor(struct skcipher_walk *walk,
 void hchacha_block_arch(const u32 *state, u32 *stream, int nrounds)
 {
-	state = PTR_ALIGN(state, CHACHA_STATE_ALIGN);
-
 	if (!static_branch_likely(&chacha_use_simd) || !crypto_simd_usable()) {
 		hchacha_block_generic(state, stream, nrounds);
 	} else {
@@ -140,8 +136,6 @@ EXPORT_SYMBOL(hchacha_block_arch);
 
 void chacha_init_arch(u32 *state, const u32 *key, const u8 *iv)
 {
-	state = PTR_ALIGN(state, CHACHA_STATE_ALIGN);
-
 	chacha_init_generic(state, key, iv);
 }
 EXPORT_SYMBOL(chacha_init_arch);
@@ -149,8 +143,6 @@ EXPORT_SYMBOL(chacha_init_arch);
 void chacha_crypt_arch(u32 *state, u8 *dst, const u8 *src, unsigned int bytes,
 		       int nrounds)
 {
-	state = PTR_ALIGN(state, CHACHA_STATE_ALIGN);
-
 	if (!static_branch_likely(&chacha_use_simd) || !crypto_simd_usable() ||
 	    bytes <= CHACHA_BLOCK_SIZE)
 		return chacha_crypt_generic(state, dst, src, bytes, nrounds);
@@ -183,6 +175,13 @@ static int chacha_simd_stream_xor(struct skcipher_request *req,
 
 	while (walk->nbytes > 0) {
 		unsigned int nbytes = walk->nbytes;
+	u32 state[CHACHA_STATE_WORDS] __aligned(8);
+	struct skcipher_walk walk;
+	int err;
+
+	err = skcipher_walk_virt(&walk, req, false);
+
+	chacha_init_generic(state, ctx->key, iv);
 
 
 		if (nbytes < walk.total)
@@ -242,8 +241,8 @@ static int xchacha_simd(struct skcipher_request *req)
 	struct crypto_skcipher *tfm = crypto_skcipher_reqtfm(req);
 	struct chacha_ctx *ctx = crypto_skcipher_ctx(tfm);
 	struct skcipher_walk walk;
+	u32 state[CHACHA_STATE_WORDS] __aligned(8);
 	struct chacha_ctx subctx;
-	u32 *state, state_buf[16 + 2] __aligned(8);
 	u8 real_iv[16];
 	int err;
 
@@ -257,6 +256,7 @@ static int xchacha_simd(struct skcipher_request *req)
 	BUILD_BUG_ON(CHACHA_STATE_ALIGN != 16);
 	state = PTR_ALIGN(state_buf + 0, CHACHA_STATE_ALIGN);
 	crypto_chacha_init(state, ctx, req->iv);
+	chacha_init_generic(state, ctx->key, req->iv);
 
 	kernel_fpu_begin();
 
