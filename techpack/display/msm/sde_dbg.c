@@ -2336,15 +2336,6 @@ int sde_dbg_debugfs_register(struct device *dev)
 	return 0;
 }
 
-#else
-
-int sde_dbg_debugfs_register(struct device *dev)
-{
-	return 0;
-}
-
-#endif
-
 static void _sde_dbg_debugfs_destroy(void)
 {
 }
