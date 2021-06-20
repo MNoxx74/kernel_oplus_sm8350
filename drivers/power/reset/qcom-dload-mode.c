@@ -38,7 +38,7 @@ struct qcom_dload {
 static bool enable_dump =
 	IS_ENABLED(CONFIG_POWER_RESET_QCOM_DOWNLOAD_MODE_DEFAULT);
 static enum qcom_download_mode current_download_mode = QCOM_DOWNLOAD_NODUMP;
-static enum qcom_download_mode dump_mode = QCOM_DOWNLOAD_FULLDUMP;
+static enum qcom_download_mode dump_mode = QCOM_DOWNLOAD_MINIDUMP;
 static bool early_pcie_init_enable;
 
 static int set_download_mode(enum qcom_download_mode mode)
@@ -248,6 +248,12 @@ static int qcom_dload_panic(struct notifier_block *this, unsigned long event,
 	poweroff->in_panic = true;
 	if (enable_dump)
 		msm_enable_dump_mode(true);
+
+	// Perform a warm reboot
+	set_download_mode(QCOM_DOWNLOAD_NODUMP);
+	reboot_mode = REBOOT_WARM;
+	mb();
+
 	return NOTIFY_OK;
 }
 
@@ -259,8 +265,7 @@ static int qcom_dload_reboot(struct notifier_block *this, unsigned long event,
 						     reboot_nb);
 
 	/* Clean shutdown, disable dump mode to allow normal restart */
-	if (!poweroff->in_panic)
-		set_download_mode(QCOM_DOWNLOAD_NODUMP);
+	set_download_mode(QCOM_DOWNLOAD_NODUMP);
 
 	if (cmd) {
 		if (!strcmp(cmd, "edl")) {
