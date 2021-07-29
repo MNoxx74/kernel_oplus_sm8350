@@ -11287,3 +11287,139 @@ module_exit(aw8697_i2c_exit);
 
 MODULE_DESCRIPTION("AW8697 Haptic Driver");
 MODULE_LICENSE("GPL v2");
+
+	pr_info("%s probe completed successfully!\n", __func__);
+
+	return 0;
+
+ err_sysfs:
+	devm_free_irq(&i2c->dev, gpio_to_irq(aw8697->irq_gpio), aw8697);
+ err_irq:
+ err_id:
+	if (gpio_is_valid(aw8697->irq_gpio))
+		devm_gpio_free(&i2c->dev, aw8697->irq_gpio);
+ err_irq_gpio_request:
+	if (gpio_is_valid(aw8697->reset_gpio))
+		devm_gpio_free(&i2c->dev, aw8697->reset_gpio);
+ err_reset_gpio_request:
+ err_parse_dt:
+	devm_kfree(&i2c->dev, aw8697);
+	aw8697 = NULL;
+	return ret;
+}
+void aw8697_i2c_shutdown(struct i2c_client *i2c)
+{
+	struct aw8697 *aw8697 = i2c_get_clientdata(i2c);
+
+	//step1 enter active mode
+	pr_err("%s enter active\n", __func__);
+	aw8697_i2c_write_bits(aw8697, AW8697_REG_SYSCTRL,
+			      AW8697_BIT_SYSCTRL_WORK_MODE_MASK,
+			      AW8697_BIT_SYSCTRL_ACTIVE);
+	//step2 bypass
+	pr_err("%s enter bypass\n", __func__);
+	aw8697_i2c_write_bits(aw8697, AW8697_REG_SYSCTRL,
+			      AW8697_BIT_SYSCTRL_BST_MODE_MASK,
+			      AW8697_BIT_SYSCTRL_BST_MODE_BYPASS);
+	msleep(30);
+	//step3 set rstn low
+	pr_err("%s enter rstn low\n", __func__);
+	gpio_set_value_cansleep(aw8697->reset_gpio, 1);
+}
+
+static int aw8697_i2c_remove(struct i2c_client *i2c)
+{
+	struct aw8697 *aw8697 = i2c_get_clientdata(i2c);
+
+	pr_info("%s enter\n", __func__);
+
+	sysfs_remove_group(&i2c->dev.kobj, &aw8697_attribute_group);
+
+	devm_free_irq(&i2c->dev, gpio_to_irq(aw8697->irq_gpio), aw8697);
+
+	if (gpio_is_valid(aw8697->irq_gpio))
+		devm_gpio_free(&i2c->dev, aw8697->irq_gpio);
+	if (gpio_is_valid(aw8697->reset_gpio))
+		devm_gpio_free(&i2c->dev, aw8697->reset_gpio);
+
+	devm_kfree(&i2c->dev, aw8697);
+	aw8697 = NULL;
+
+	return 0;
+}
+
+static int aw8697_suspend(struct device *dev)
+{
+	int ret = 0;
+	struct aw8697 *aw8697 = dev_get_drvdata(dev);
+
+	mutex_lock(&aw8697->lock);
+	aw8697_haptic_stop(aw8697);
+	mutex_unlock(&aw8697->lock);
+
+	return ret;
+}
+
+static int aw8697_resume(struct device *dev)
+{
+	int ret = 0;
+	return ret;
+}
+
+static SIMPLE_DEV_PM_OPS(aw8697_pm_ops, aw8697_suspend, aw8697_resume);
+
+static const struct i2c_device_id aw8697_i2c_id[] = {
+	{AW8697_I2C_NAME, 0},
+	{}
+};
+
+MODULE_DEVICE_TABLE(i2c, aw8697_i2c_id);
+
+static const struct of_device_id aw8697_dt_match[] = {
+	{.compatible = "awinic,aw8697_haptic"},
+	{},
+};
+
+static struct i2c_driver aw8697_i2c_driver = {
+	.driver = {
+		   .name = AW8697_I2C_NAME,
+		   .owner = THIS_MODULE,
+		   .of_match_table = of_match_ptr(aw8697_dt_match),
+		   	.probe_type = PROBE_PREFER_ASYNCHRONOUS,
+#ifdef CONFIG_PM_SLEEP
+		    .pm = &aw8697_pm_ops,
+#endif
+		   },
+	.probe = aw8697_i2c_probe,
+	.remove = aw8697_i2c_remove,
+	.shutdown = aw8697_i2c_shutdown,
+	.id_table = aw8697_i2c_id,
+};
+
+static int __init aw8697_i2c_init(void)
+{
+	int ret = 0;
+
+	pr_info("aw8697 driver version %s\n", AW8697_DRIVER_VERSION);
+
+	ret = i2c_add_driver(&aw8697_i2c_driver);
+	if (ret) {
+		pr_err("fail to add aw8697 device into i2c\n");
+		return ret;
+	}
+
+	return 0;
+}
+
+/* late_initcall(aw8697_i2c_init); */
+module_init(aw8697_i2c_init);
+
+static void __exit aw8697_i2c_exit(void)
+{
+	i2c_del_driver(&aw8697_i2c_driver);
+}
+
+module_exit(aw8697_i2c_exit);
+
+MODULE_DESCRIPTION("AW8697 Haptic Driver");
+MODULE_LICENSE("GPL v2");
