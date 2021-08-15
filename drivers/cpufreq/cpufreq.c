@@ -32,6 +32,38 @@
 #include <linux/sched/sysctl.h>
 #include <trace/events/power.h>
 
+#ifdef CONFIG_UCI
+#include <linux/uci/uci.h>
+
+// saver 1
+#define LVL1_LITTLE 1708800
+#define LVL1_BIG    2112000
+#define LVL1_PRIME  2496000
+
+// saver 2
+#define LVL2_LITTLE 1612800
+#define LVL2_BIG    1766400
+#define LVL2_PRIME  2035200
+
+// saver 3
+#define LVL3_LITTLE 1497600
+#define LVL3_BIG    1440000
+#define LVL3_PRIME  1670400
+
+static int batterysaver = 0; // 0 - 1 - 3
+// default 0, seriously cutting back max freqs for sunshine inside car/long gps tracking...
+// 1 medium cutback, 2 full cutback, 3 full cutback and disable touch freq min boost
+static int batterysaver_level = 0; // 0 - 1 - 3
+static bool batterysaver_touch_limiting = false;
+#define BATTERY_SAVER_MAX_LEVEL 3
+
+static void uci_user_listener(void) {
+    batterysaver = !!uci_get_user_property_int_mm("batterysaver", 0,0,1);
+    batterysaver_level = uci_get_user_property_int_mm("batterysaver_level", 0,0,BATTERY_SAVER_MAX_LEVEL);
+    batterysaver_touch_limiting = !!uci_get_user_property_int_mm("batterysaver_touch_limiting", 0,0,1);
+}
+#endif
+
 static LIST_HEAD(cpufreq_policy_list);
 
 /* Macros to iterate over CPU policies */
