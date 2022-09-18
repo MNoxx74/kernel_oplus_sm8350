@@ -606,7 +606,6 @@ static inline bool vma_is_temporary_stack(struct vm_area_struct *vma)
 }
 
 static inline bool vma_is_foreign(struct vm_area_struct *vma)
-{
 	if (!current->mm)
 		return true;
 
@@ -614,6 +613,9 @@ static inline bool vma_is_foreign(struct vm_area_struct *vma)
 		return true;
 
 	return false;
+static inline bool vma_is_accessible(struct vm_area_struct *vma)
+{
+	return vma->vm_flags & (VM_READ | VM_EXEC | VM_WRITE);
 }
 
 #ifdef CONFIG_SHMEM
