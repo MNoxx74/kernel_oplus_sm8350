@@ -463,12 +463,6 @@ static inline void bitmap_replace(unsigned long *dst,
 		__bitmap_replace(dst, old, new, mask, nbits);
 }
 
-static inline int bitmap_parse(const char *buf, unsigned int buflen,
-			unsigned long *maskp, int nmaskbits)
-{
-	return __bitmap_parse(buf, buflen, 0, maskp, nmaskbits);
-}
-
 static inline void bitmap_next_clear_region(unsigned long *bitmap,
 					    unsigned int *rs, unsigned int *re,
 					    unsigned int end)

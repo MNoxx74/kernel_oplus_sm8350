@@ -950,18 +950,6 @@ int enable_global_hbm_flags = 0;
 int enable_hbm_enter_dly_on_flags = 0;
 int enable_hbm_exit_dly_on_flags = 0;
 extern int oplus_display_panel_backlight_mapping(struct dsi_panel *panel, u32 *backlight_level);
-
-static int bl_min_stock = 4;
-module_param(bl_min_stock, int, 0644);
-
-#ifdef CONFIG_UCI
-
-struct dsi_panel *g_panel = NULL;
-static int backlight_min = 4;
-static bool backlight_dimmer = false;
-static u32 last_brightness;
-static bool first_brightness_set = false;
-
 #endif
 static int dsi_panel_update_backlight(struct dsi_panel *panel,
 	u32 bl_lvl)
