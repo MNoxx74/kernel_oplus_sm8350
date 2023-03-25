@@ -257,6 +257,7 @@ static const struct parent_map gcc_parent_map_15[] = {
 static const char * const gcc_parent_names_15[] = {
 	"bi_tcxo",
 	"gpll0_out_aux",
+	"cxo",
 	"core_bi_pll_test_se",
 	"cxo",
 	"core_bi_pll_test_se",
