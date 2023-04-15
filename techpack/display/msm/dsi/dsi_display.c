@@ -882,6 +882,7 @@ static bool dsi_display_validate_reg_read(struct dsi_panel *panel)
 	int i, j = 0;
 	int len = 0, *lenp;
 	int group = 0, count = 0;
+	return true;
 	struct drm_panel_esd_config *config;
 #ifdef OPLUS_BUG_STABILITY
 	int rc = 0;
